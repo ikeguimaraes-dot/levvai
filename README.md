@@ -28,9 +28,11 @@ Clone publicado em **https://levvai.vercel.app**, no projeto Vercel separado
 original não foi alterado. `CLAUDE.md` é documentação histórica da instalação original.
 
 As duas variáveis públicas Supabase estão configuradas em Production. A variável
-`SUPABASE_SERVICE_ROLE_KEY` aguarda autorização específica para armazenamento
-como segredo na Vercel. Até isso ser concluído, gestão de usuários e API CRM
-não estão habilitadas. O frontend acessa o banco diretamente com RLS.
+`SUPABASE_SERVICE_ROLE_KEY` foi autorizada pelo responsável e configurada como
+segredo Sensitive, apenas em Production, em 07/10/2026. Ela é utilizada pelas
+APIs de gestão de usuários e CRM; não está no Git nem no bundle do navegador.
+O frontend acessa o banco diretamente com RLS. O teste de login e dos fluxos
+autenticados com senha real continua pendente.
 
 Portal interno de gestão da clínica de estética Instituto Levvai.
 
