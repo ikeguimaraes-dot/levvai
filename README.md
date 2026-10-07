@@ -23,9 +23,14 @@ ao destino por transação verificada; não executar novamente. Os SQLs antigos 
 `supabase/legacy-source` são apenas histórico e não devem ser executados no hos-alter.
 Backups e dados pessoais não pertencem ao Git.
 
-O clone ainda precisa ser publicado em um projeto de hospedagem separado e ter
-as variáveis de servidor configuradas. Não reutilizar o deploy original sem
-uma decisão explícita. `CLAUDE.md` é documentação histórica da instalação original.
+Clone publicado em **https://levvai.vercel.app**, no projeto Vercel separado
+`henriques-projects-0f1cdf7f/levvai`, conectado a este repositório. O deploy
+original não foi alterado. `CLAUDE.md` é documentação histórica da instalação original.
+
+As duas variáveis públicas Supabase estão configuradas em Production. A variável
+`SUPABASE_SERVICE_ROLE_KEY` aguarda autorização específica para armazenamento
+como segredo na Vercel. Até isso ser concluído, gestão de usuários e API CRM
+não estão habilitadas. O frontend acessa o banco diretamente com RLS.
 
 Portal interno de gestão da clínica de estética Instituto Levvai.
 
@@ -42,10 +47,15 @@ npm test           # testes de isolamento de autenticação
 
 ## Deploy
 
-Conecte este repositório a um **novo** projeto Vercel. Configure as variáveis
-abaixo antes do deploy. O frontend usa Vite; as rotas `api/` exigem funções
-serverless (não funcionam apenas com `vite preview`). Não há deploy automático
-do clone confirmado nesta migração.
+Push em `main` publica automaticamente no projeto Vercel **levvai**. O frontend
+usa Vite; as rotas `api/` usam funções serverless (não funcionam apenas com
+`vite preview`). Build e pasta de saída estão definidos em `vercel.json`.
+
+Verificações do deploy inicial: página e JavaScript retornam HTTP 200; bundle
+aponta para o novo Supabase; as três APIs retornam 401 sem sessão; nove testes
+automatizados passaram. O teste de login com senha real continua pendente.
+O build informou nove alertas de dependências (seis altos); sua atualização
+precisa de revisão e testes próprios, sem executar `npm audit fix --force`.
 
 ```bash
 git add .
