@@ -1,0 +1,7 @@
+.env*
+!.env.example
+supabase/
+tests/
+backups/
+*.dump
+*.backup
