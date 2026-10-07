@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { ADMIN_MASTER_EMAILS, LEGACY_PORTAL_EMAILS } from '../shared/auth-config.js';
+import { ADMIN_MASTER_EMAILS } from '../shared/auth-config.js';
 
 const getBearerToken = (authorization = '') => {
   const match = authorization.match(/^Bearer\s+(.+)$/i);
@@ -22,9 +22,11 @@ export async function requireUser(req, res, { admin = false } = {}) {
 
   let user;
   let error;
+  let authClient;
   try {
-    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+    authClient = createClient(supabaseUrl, supabaseAnonKey, {
       auth: { autoRefreshToken: false, persistSession: false },
+      global: { headers: { Authorization: `Bearer ${token}` } },
     });
     const result = await authClient.auth.getUser(token);
     user = result.data.user;
@@ -43,8 +45,16 @@ export async function requireUser(req, res, { admin = false } = {}) {
   }
 
   const email = user.email.toLowerCase();
-  const hasPortalAccess = user.app_metadata?.portal_access === true || LEGACY_PORTAL_EMAILS.includes(email);
-  if (!hasPortalAccess) {
+  let membership;
+  try {
+    const result = await authClient.from('levvai_members').select('user_id').eq('user_id', user.id).maybeSingle();
+    if (result.error) throw result.error;
+    membership = result.data;
+  } catch {
+    res.status(503).json({ error: 'Portal authorization temporarily unavailable' });
+    return null;
+  }
+  if (!membership) {
     res.status(403).json({ error: 'Portal access required' });
     return null;
   }

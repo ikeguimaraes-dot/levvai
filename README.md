@@ -4,24 +4,28 @@
 
 Repositório de destino: https://github.com/ikeguimaraes-dot/levvai
 
-Esta cópia inclui o código atual e as correções locais de autenticação. O histórico
-Git do repositório original não foi importado. O banco de dados ainda NÃO foi
-copiado. Não executar as migrations como se fossem um backup completo: elas
-contêm apenas parte da estrutura e não contêm os registros de produção.
+Clone e migração realizados em 07/10/2026. O histórico Git original não foi
+importado. Destino: Supabase `ivabmzjlcnmzwhmfqeam` (**hos-alter**).
 
-O Supabase proposto (`ivabmzjlcnmzwhmfqeam`, nome `hos-alter`) já possui outro
-sistema, com 31 tabelas públicas, um usuário e um bucket. Confirmar o destino
-antes de importar qualquer banco. O projeto original `wlkshbycdtgvyabcolmd`
-não está acessível pela conexão Supabase atual.
+- Copiadas 21 tabelas e 337 registros, 4 funções e 12 triggers.
+- Preservadas as 31 tabelas preexistentes, a conta Auth e o bucket do hos-alter.
+- Cinco contas Auth importadas com os hashes de senha originais; a sexta conta
+  já existia no destino e foi reutilizada sem alterar seus dados ou sua senha.
+- Todos os seis usuários têm vínculo explícito em `levvai_members`.
+- A conta compartilhada usa a senha que já tinha no hos-alter. Os outros cinco
+  usuários mantêm a senha do Levvai. Todos precisam entrar novamente no clone.
+- Não havia buckets, arquivos Storage ou fatores MFA no projeto de origem.
+- Dados conferidos integralmente na transação; RLS e isolamento verificados.
 
-Para concluir: obter acesso/backup do banco original, copiar schema e dados
-(incluindo Auth), transferir os arquivos Storage, revisar configurações Auth e
-integrações, comparar contagens e testar login/permissões. Manter backups,
-dados pessoais e chaves de serviço fora do Git. Copiar `.env.example` para
-`.env.local` e preencher as chaves somente após confirmar o destino.
+A migration `20261007134508_import_levvai_isolated.sql` é uma estrutura completa
+para instalação limpa, **sem registros, usuários ou segredos**. Já foi aplicada
+ao destino por transação verificada; não executar novamente. Os SQLs antigos em
+`supabase/legacy-source` são apenas histórico e não devem ser executados no hos-alter.
+Backups e dados pessoais não pertencem ao Git.
 
-O conteúdo abaixo e `CLAUDE.md` documentam a instalação ORIGINAL, não um deploy
-do clone.
+O clone ainda precisa ser publicado em um projeto de hospedagem separado e ter
+as variáveis de servidor configuradas. Não reutilizar o deploy original sem
+uma decisão explícita. `CLAUDE.md` é documentação histórica da instalação original.
 
 Portal interno de gestão da clínica de estética Instituto Levvai.
 
@@ -33,11 +37,15 @@ Portal interno de gestão da clínica de estética Instituto Levvai.
 npm install
 npm run dev        # http://localhost:5173
 npm run build      # build de produção
+npm test           # testes de isolamento de autenticação
 ```
 
 ## Deploy
 
-Push para `main` → Vercel auto-deploya em ~1 minuto.
+Conecte este repositório a um **novo** projeto Vercel. Configure as variáveis
+abaixo antes do deploy. O frontend usa Vite; as rotas `api/` exigem funções
+serverless (não funcionam apenas com `vite preview`). Não há deploy automático
+do clone confirmado nesta migração.
 
 ```bash
 git add .
@@ -49,14 +57,32 @@ git push origin main
 
 Crie `.env.local` na raiz:
 ```
-VITE_SUPABASE_URL=https://wlkshbycdtgvyabcolmd.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indsa3NoYnljZHRndnlhYmNvbG1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTYzMjQsImV4cCI6MjA4OTQzMjMyNH0.D5yN7ECOmQ5KA9zmuslaJKrW_ODmp-FiGvlx8MnYMRg
+VITE_SUPABASE_URL=https://ivabmzjlcnmzwhmfqeam.supabase.co
+VITE_SUPABASE_ANON_KEY=<chave publishable do destino>
 ```
 
 Variáveis adicionais configuradas no painel da Vercel:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `META_ACCESS_TOKEN`
 - `INSTAGRAM_USER_ID`
+
+Nunca usar prefixo `VITE_` para a chave `service_role` ou o token Meta.
+O token Instagram original estava expirado e não foi migrado; a integração
+exige renovação pelo responsável. O teste de login com senha real no novo
+site ainda precisa ser realizado após a publicação.
+
+### Isolamento no projeto compartilhado
+
+RLS consulta `levvai_members` a cada operação. Uma conta Auth ou metadados
+editáveis não concedem acesso. Só o backend privilegiado gerencia vínculos.
+O painel lista apenas membros Levvai; não altera a conta compartilhada do HOS.
+Remover acesso exclui apenas o vínculo Levvai, nunca a conta Auth do projeto.
+As funções de negócio são SECURITY INVOKER e seguem a mesma RLS.
+
+Os avisos de segurança restantes pertencem à configuração preexistente do
+hos-alter: [search_path de data_fonte](https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable)
+e [proteção contra senhas vazadas](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
+Não foram alterados ajustes globais de Auth nem as políticas do HOS.
 
 ## Stack
 

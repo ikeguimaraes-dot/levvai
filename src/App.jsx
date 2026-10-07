@@ -1823,11 +1823,13 @@ const UsuariosTab = ({ shared }) => {
 
   const deleteUser = async (userId, email) => {
     if (!confirm(`Remover acesso de ${email}?`)) return;
-    await authenticatedFetch('/api/admin-users', {
+    const res = await authenticatedFetch('/api/admin-users', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId }),
     });
+    const data = await res.json();
+    if (!res.ok) { setMsg(`Erro: ${data.error || 'Não foi possível remover o acesso.'}`); return; }
     if (selectedUser?.id === userId) setSelectedUser(null);
     loadUsers();
   };
@@ -7724,24 +7726,45 @@ const [active, setActive] = useState("visao-geral");
   const Content = tabContent[oldId];
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
+    let mounted = true;
+    let revision = 0;
+    let timer;
+    const applySession = async (session) => {
+      const current = ++revision;
+      try {
+        if (!session?.user || session.user.is_anonymous) {
+          if (mounted) setCurrentUser(null);
+          return;
+        }
+        const { data, error } = await supabase.from('levvai_members')
+          .select('user_id').eq('user_id', session.user.id).maybeSingle();
+        if (!mounted || current !== revision) return;
+        if (error || !data) {
+          setCurrentUser(null);
+          setLoginError(error ? 'Não foi possível verificar o acesso. Tente novamente.' : 'Sua conta não possui acesso ao Levvai.');
+          return;
+        }
         const profile = userProfiles[session.user.email] || { name: session.user.email, role: 'Usuário', color: '#888' };
         setCurrentUser({ email: session.user.email, ...profile });
+      } catch {
+        if (mounted && current === revision) {
+          setCurrentUser(null);
+          setLoginError('Não foi possível verificar o acesso. Tente novamente.');
+        }
+      } finally {
+        if (mounted && current === revision) setAuthLoading(false);
       }
-      setAuthLoading(false);
+    };
+    supabase.auth.getSession().then(({ data: { session } }) => applySession(session)).catch(() => {
+      if (mounted) { setAuthLoading(false); setLoginError('Não foi possível recuperar a sessão.'); }
     });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        const profile = userProfiles[session.user.email] || { name: session.user.email, role: 'Usuário', color: '#888' };
-        setCurrentUser({ email: session.user.email, ...profile });
-      } else {
-        setCurrentUser(null);
-      }
+      // Query after the Auth callback returns, outside its internal lock.
+      clearTimeout(timer);
+      revision++;
+      timer = setTimeout(() => applySession(session), 0);
     });
-
-    return () => subscription.unsubscribe();
+    return () => { mounted = false; clearTimeout(timer); subscription.unsubscribe(); };
   }, []);
 
   const handleLogin = async () => {
