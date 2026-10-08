@@ -96,12 +96,15 @@ export default function Sidebar({
   user = { name: 'Ike Guimarães', role: 'CEO — Admin' },
   onLogout = () => {},
   badges = {},
+  mobileOpen = false,
+  onMobileClose = () => {},
 }) {
   const initial = user?.name ? user.name.charAt(0).toUpperCase() : 'U';
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${mobileOpen ? 'is-mobile-open' : ''}`}>
       <div className="sidebar-brand">
+        <button className="sidebar-mobile-close" onClick={onMobileClose} aria-label="Fechar menu">×</button>
         <span className="sidebar-brand-top">Instituto</span>
         <span className="sidebar-brand-main">LEVVAI</span>
         <span className="sidebar-brand-sub">Plataforma de Gestão</span>

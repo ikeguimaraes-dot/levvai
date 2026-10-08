@@ -2237,12 +2237,21 @@ const BudgetTab = () => {
   const [showMargin, setShowMargin] = useState(false);
   const [products, setProducts] = useState([]);
 
+  const fallbackProducts = [
+    { nome: 'Botox Full Face', cat: 'Toxina', custoUn: 620, precoSugerido: 1800, protocolo: 'Aplicação full face' },
+    { nome: 'Levvai Lips', cat: 'Preenchedor', custoUn: 690, precoSugerido: 1900, protocolo: 'Preenchimento labial' },
+    { nome: 'Levvai Glow', cat: 'Skin Booster', custoUn: 780, precoSugerido: 2200, protocolo: 'Protocolo de revitalização' },
+    { nome: 'Levvai Lift', cat: 'Fios', custoUn: 95, precoSugerido: 260, protocolo: 'Valor por fio' },
+    { nome: 'Bioestimulador', cat: 'Bioestimulador', custoUn: 920, precoSugerido: 2600, protocolo: 'Sessão de bioestimulação' },
+  ];
+
   useEffect(() => {
     supabase.from('produtos').select('*').eq('ativo', true).order('cat').order('nome')
       .then(({ data }) => {
-        if (data) setProducts(data.map(p => ({
+        if (data?.length) setProducts(data.map(p => ({
           ...p, custoUn: p.custo_un, precoSugerido: p.preco_sugerido, estoqueMin: p.estoque_min,
         })));
+        else setProducts(fallbackProducts);
       });
   }, []);
 
@@ -2295,6 +2304,18 @@ const BudgetTab = () => {
             <div style={{ fontSize: 11, fontWeight: 600, color: "#999", marginBottom: 4 }}>DESCONTO %</div>
             <input type="number" value={desconto} onChange={e => setDesconto(Math.min(30, Math.max(0, Number(e.target.value))))}
               min="0" max="30" style={{ width: "100%", padding: "8px 12px", border: `1px solid #ddd`, borderRadius: 8, fontSize: 14, fontFamily: "inherit", textAlign: "center", outline: "none", boxSizing: "border-box" }} />
+          </div>
+          <div className="discount-simulator">
+            <div className="discount-simulator-top">
+              <span>SIMULAR DESCONTO</span>
+              <strong>{desconto}% · economia de {fmt(descontoVal)}</strong>
+            </div>
+            <input aria-label="Simular desconto" type="range" min="0" max="30" step="1" value={desconto} onChange={e => setDesconto(Number(e.target.value))} />
+            <div className="discount-presets">
+              {[0, 5, 10, 15, 20, 30].map(valor => (
+                <button key={valor} className={desconto === valor ? 'is-active' : ''} onClick={() => setDesconto(valor)}>{valor}%</button>
+              ))}
+            </div>
           </div>
           <div style={{ flex: "0 0 100px" }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: "#999", marginBottom: 4 }}>PARCELAS</div>
@@ -4229,6 +4250,7 @@ const CRMTab = ({ shared }) => {
   const [showNew, setShowNew] = useState(false);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('TODOS');
+  const [initialFilter, setInitialFilter] = useState('TODOS');
   const [newPac, setNewPac] = useState({ nome: '', telefone: '', email: '', cpf: '', data_nascimento: '', sexo: '', origem: 'Instagram', indicado_por: '', status: 'lead', observacoes_gerais: '' });
   const [saving, setSaving] = useState(false);
 
@@ -4255,7 +4277,28 @@ const CRMTab = ({ shared }) => {
 
   const filtered = pacientes
     .filter(p => filterStatus === 'TODOS' || p.status === filterStatus)
+    .filter(p => initialFilter === 'TODOS' || (p.nome || '').trim().toLocaleUpperCase('pt-BR').startsWith(initialFilter))
     .filter(p => !search || (p.nome || '').toLowerCase().includes(search.toLowerCase()) || (p.telefone || '').includes(search) || (p.email || '').toLowerCase().includes(search.toLowerCase()));
+
+  const initials = [...new Set(pacientes.map(p => (p.nome || '').trim().charAt(0).toLocaleUpperCase('pt-BR')).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const birthdayInfo = (date) => {
+    if (!date) return null;
+    const clean = String(date).slice(0, 10);
+    const parts = clean.includes('-') ? clean.split('-') : clean.split('/').reverse();
+    const month = Number(parts[1]);
+    const day = Number(parts[2]);
+    if (!month || !day) return null;
+    const now = new Date();
+    let next = new Date(now.getFullYear(), month - 1, day);
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (next < todayStart) next = new Date(now.getFullYear() + 1, month - 1, day);
+    const days = Math.round((next - todayStart) / 86400000);
+    return { days, label: `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}` };
+  };
+  const birthdays = pacientes.map(p => ({ ...p, birthday: birthdayInfo(p.data_nascimento) }))
+    .filter(p => p.birthday && p.birthday.days <= 30)
+    .sort((a, b) => a.birthday.days - b.birthday.days);
 
   const counts = Object.keys(STATUS_COLORS).reduce((acc, k) => ({ ...acc, [k]: pacientes.filter(p => p.status === k).length }), {});
 
@@ -4301,6 +4344,28 @@ const CRMTab = ({ shared }) => {
         </button>
       </div>
 
+      <div className="crm-tools-grid">
+        <div className="alphabet-filter">
+          <div className="crm-tool-label">Lista por inicial</div>
+          <div className="alphabet-buttons">
+            <button className={initialFilter === 'TODOS' ? 'is-active' : ''} onClick={() => setInitialFilter('TODOS')}>Todos</button>
+            {initials.map(letter => (
+              <button key={letter} className={initialFilter === letter ? 'is-active' : ''} onClick={() => setInitialFilter(letter)}>{letter}</button>
+            ))}
+          </div>
+        </div>
+        <div className="birthday-panel">
+          <div className="crm-tool-label">Aniversários · próximos 30 dias</div>
+          {birthdays.length ? birthdays.slice(0, 4).map(p => (
+            <button key={p.id} onClick={() => setSelected(p)} className="birthday-person">
+              <span className="birthday-icon">🎂</span>
+              <span><strong>{p.nome}</strong><small>{p.birthday.label}</small></span>
+              <em>{p.birthday.days === 0 ? 'Hoje' : `em ${p.birthday.days}d`}</em>
+            </button>
+          )) : <div className="birthday-empty">Nenhum aniversário nos próximos 30 dias.</div>}
+        </div>
+      </div>
+
       {/* FORM NOVO */}
       {showNew && (
         <Card title="Cadastrar Novo Paciente / Lead">
@@ -4314,7 +4379,7 @@ const CRMTab = ({ shared }) => {
             <div><div style={labelStyle}>TELEFONE</div><input value={newPac.telefone} onChange={e => setNewPac({ ...newPac, telefone: e.target.value })} placeholder="(11) 99999-0000" style={inputStyle} /></div>
             <div><div style={labelStyle}>E-MAIL</div><input value={newPac.email} onChange={e => setNewPac({ ...newPac, email: e.target.value })} type="email" style={inputStyle} /></div>
             <div><div style={labelStyle}>CPF</div><input value={newPac.cpf} onChange={e => setNewPac({ ...newPac, cpf: e.target.value })} placeholder="000.000.000-00" style={inputStyle} /></div>
-            <div><div style={labelStyle}>NASCIMENTO</div><input value={newPac.data_nascimento} onChange={e => setNewPac({ ...newPac, data_nascimento: e.target.value })} placeholder="DD/MM/AAAA" style={inputStyle} /></div>
+            <div><div style={labelStyle}>NASCIMENTO</div><input type="date" value={newPac.data_nascimento} onChange={e => setNewPac({ ...newPac, data_nascimento: e.target.value })} style={inputStyle} /></div>
             <div><div style={labelStyle}>SEXO</div>
               <select value={newPac.sexo} onChange={e => setNewPac({ ...newPac, sexo: e.target.value })} style={inputStyle}>
                 <option value="">—</option><option>Feminino</option><option>Masculino</option><option>Outro</option>

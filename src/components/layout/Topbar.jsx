@@ -14,10 +14,14 @@ export default function Topbar({
   tab = 'Visão Geral',
   cycleLabel = 'Ciclo Q2 · Abr 26',
   onSearch = () => {},
+  onMenuToggle = () => {},
 }) {
   return (
     <div className="topbar">
       <div className="topbar-left">
+        <button className="mobile-menu-btn" onClick={onMenuToggle} aria-label="Abrir menu de navegação">
+          <span></span><span></span><span></span>
+        </button>
         <div className="topbar-breadcrumb">
           <span>{sector}</span>
           <span className="sep">/</span>

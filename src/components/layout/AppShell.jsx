@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 
@@ -21,17 +21,37 @@ export default function AppShell({
   cycleLabel,
   children,
 }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [activeTab]);
+
   return (
     <div className="app">
+      {mobileMenuOpen && (
+        <button
+          className="mobile-nav-backdrop"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-label="Fechar menu"
+        />
+      )}
       <Sidebar
         activeTab={activeTab}
         onTabChange={onTabChange}
         user={user}
         onLogout={onLogout}
         badges={badges}
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
       />
       <main className="main">
-        <Topbar sector={sector} tab={tab} cycleLabel={cycleLabel} />
+        <Topbar
+          sector={sector}
+          tab={tab}
+          cycleLabel={cycleLabel}
+          onMenuToggle={() => setMobileMenuOpen((open) => !open)}
+        />
         <div className="content">{children}</div>
       </main>
     </div>
