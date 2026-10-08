@@ -1021,6 +1021,18 @@ ul { list-style: none; }
 .birthday-person small { font-size: 10px; color: var(--muted); }
 .birthday-person em { color: var(--gold-deep); font: 10px var(--mono); font-style: normal; }
 .birthday-empty { font-size: 12px; color: var(--muted-2); }
+.patient-autocomplete { position: relative; align-self: flex-start; }
+.patient-options { position: absolute; z-index: 80; top: calc(100% + 5px); left: 0; right: 0; max-height: 320px; overflow-y: auto; background: white; border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 14px 38px rgba(26,21,18,.16); padding: 5px; }
+.patient-options button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 7px; text-align: left; }
+.patient-options button:hover { background: var(--bg-hover); }
+.patient-option-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--gold); color: white; display: grid; place-items: center; font-weight: 800; flex: 0 0 auto; }
+.patient-option-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.patient-option-info strong { font-size: 12px; color: var(--ink); }
+.patient-option-info small { font-size: 10px; color: var(--muted-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.patient-option-birthday { font-size: 10px; color: var(--gold-deep); white-space: nowrap; }
+.patient-options-empty { padding: 13px; color: var(--muted-2); font-size: 12px; }
+.selected-patient-birthday { margin-top: 5px; color: var(--muted); font-size: 11px; }
+.selected-patient-birthday strong { color: var(--gold-deep); }
 @media (max-width: 900px) {
   .app { grid-template-columns: 1fr; }
   .sidebar { display: flex; position: fixed; z-index: 1000; left: 0; top: 0; width: min(86vw, 320px); transform: translateX(-105%); transition: transform .25s var(--ease); box-shadow: 20px 0 50px rgba(0,0,0,.28); }
@@ -1047,6 +1059,7 @@ ul { list-style: none; }
   .card { padding: 18px 14px; }
   .mission-targets { gap: 18px; flex-wrap: wrap; }
   .login-card { padding: 24px 20px; }
+  .patient-option-birthday { display: none; }
 }
 @media print {
   .sidebar, .topbar { display: none !important; }

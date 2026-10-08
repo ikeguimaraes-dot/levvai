@@ -2231,6 +2231,9 @@ const DocsTab = () => {
 // BUDGET TAB
 const BudgetTab = () => {
   const [paciente, setPaciente] = useState("");
+  const [pacientes, setPacientes] = useState([]);
+  const [selectedPaciente, setSelectedPaciente] = useState(null);
+  const [showPacienteOptions, setShowPacienteOptions] = useState(false);
   const [items, setItems] = useState([]);
   const [desconto, setDesconto] = useState(0);
   const [parcelas, setParcelas] = useState(1);
@@ -2253,7 +2256,24 @@ const BudgetTab = () => {
         })));
         else setProducts(fallbackProducts);
       });
+    supabase.from('pacientes').select('id, nome, telefone, email, data_nascimento').order('nome')
+      .then(({ data }) => setPacientes(Array.isArray(data) ? data : []));
   }, []);
+
+  const formatNascimento = (date) => {
+    if (!date) return 'Aniversário não cadastrado';
+    const clean = String(date).slice(0, 10);
+    const parts = clean.includes('-') ? clean.split('-') : clean.split('/').reverse();
+    return parts[1] && parts[2] ? `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}` : 'Aniversário não cadastrado';
+  };
+  const pacienteOptions = paciente.trim().length
+    ? pacientes.filter(p => (p.nome || '').toLocaleLowerCase('pt-BR').startsWith(paciente.trim().toLocaleLowerCase('pt-BR'))).slice(0, 8)
+    : [];
+  const selectPaciente = (p) => {
+    setPaciente(p.nome);
+    setSelectedPaciente(p);
+    setShowPacienteOptions(false);
+  };
 
   const addItem = (product) => {
     const existing = items.find(i => i.nome === product.nome);
@@ -2294,11 +2314,25 @@ const BudgetTab = () => {
       {/* DADOS DO PACIENTE */}
       <Card title="Dados do Orçamento">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ flex: "1 1 200px" }}>
+          <div className="patient-autocomplete" style={{ flex: "1 1 260px" }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: "#999", marginBottom: 4 }}>PACIENTE</div>
-            <input value={paciente} onChange={e => setPaciente(e.target.value)}
-              placeholder="Nome da paciente"
+            <input value={paciente} onChange={e => { setPaciente(e.target.value); setSelectedPaciente(null); setShowPacienteOptions(true); }}
+              onFocus={() => paciente.trim() && setShowPacienteOptions(true)}
+              placeholder="Digite a primeira letra do nome"
+              autoComplete="off"
               style={{ width: "100%", padding: "8px 12px", border: `1px solid #ddd`, borderRadius: 8, fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
+            {showPacienteOptions && paciente.trim() && (
+              <div className="patient-options">
+                {pacienteOptions.length ? pacienteOptions.map(p => (
+                  <button key={p.id} type="button" onClick={() => selectPaciente(p)}>
+                    <span className="patient-option-avatar">{(p.nome || '?')[0].toUpperCase()}</span>
+                    <span className="patient-option-info"><strong>{p.nome}</strong><small>{p.telefone || p.email || 'Sem contato cadastrado'}</small></span>
+                    <span className="patient-option-birthday">🎂 {formatNascimento(p.data_nascimento)}</span>
+                  </button>
+                )) : <div className="patient-options-empty">Nenhum paciente começa com “{paciente.trim()}”.</div>}
+              </div>
+            )}
+            {selectedPaciente && <div className="selected-patient-birthday">🎂 Aniversário: <strong>{formatNascimento(selectedPaciente.data_nascimento)}</strong></div>}
           </div>
           <div style={{ flex: "0 0 100px" }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: "#999", marginBottom: 4 }}>DESCONTO %</div>
@@ -4296,6 +4330,7 @@ const CRMTab = ({ shared }) => {
     const days = Math.round((next - todayStart) / 86400000);
     return { days, label: `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}` };
   };
+  const formatNascimento = (date) => birthdayInfo(date)?.label || '—';
   const birthdays = pacientes.map(p => ({ ...p, birthday: birthdayInfo(p.data_nascimento) }))
     .filter(p => p.birthday && p.birthday.days <= 30)
     .sort((a, b) => a.birthday.days - b.birthday.days);
@@ -4412,7 +4447,7 @@ const CRMTab = ({ shared }) => {
       ) : (
         <Card title={`${filtered.length} paciente(s)`}>
           <div style={{ display: 'flex', background: DARK, borderRadius: '8px 8px 0 0', padding: '8px 0' }}>
-            {['NOME', 'TELEFONE', 'ORIGEM', 'STATUS', 'ÚLT. ATUALIZAÇÃO'].map((h, i) => (
+            {['NOME', 'TELEFONE', 'ANIVERSÁRIO', 'ORIGEM', 'STATUS', 'ÚLT. ATUALIZAÇÃO'].map((h, i) => (
               <div key={i} style={{ flex: i === 0 ? 2 : 1, fontSize: 9, fontWeight: 700, color: GOLD, textAlign: 'center', letterSpacing: '0.05em' }}>{h}</div>
             ))}
           </div>
@@ -4437,6 +4472,9 @@ const CRMTab = ({ shared }) => {
                   </div>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center', fontSize: 12, color: '#666' }}>{p.telefone || '—'}</div>
+                <div style={{ flex: 1, textAlign: 'center', fontSize: 12, color: p.data_nascimento ? '#A68750' : '#aaa', fontWeight: p.data_nascimento ? 700 : 400 }}>
+                  {p.data_nascimento ? `🎂 ${formatNascimento(p.data_nascimento)}` : '—'}
+                </div>
                 <div style={{ flex: 1, textAlign: 'center' }}><Badge text={p.origem} color={LIGHT} textColor='#888' /></div>
                 <div style={{ flex: 1, textAlign: 'center' }}><Badge text={st.label} color={st.bg} textColor={st.tc} /></div>
                 <div style={{ flex: 1, textAlign: 'center', fontSize: 11, color: '#aaa' }}>
